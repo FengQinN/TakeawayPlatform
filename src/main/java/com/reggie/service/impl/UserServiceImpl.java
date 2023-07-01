@@ -9,18 +9,22 @@ import com.reggie.service.UserService;
 import com.reggie.utils.ValidateCodeUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.servlet.http.HttpSession;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 @Service
 @Transactional
 @Slf4j
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements UserService {
 
-
+    @Autowired
+    private RedisTemplate redisTemplate;
 
     //生成移动端手机验证码
     @Override
@@ -35,7 +39,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             log.info("发送短信到手机号:{},---------验证码:{}", phone, code);
             //SMSUtils.sendMessage("阿里云短信测试", "SMS_154950909", phone, code);
             //保存验证码,暂时保存在Session中，后期替换为Redis
-            session.setAttribute(phone, code);
+            //session.setAttribute(phone, code);
+            redisTemplate.opsForValue().set(phone,code,60l, TimeUnit.SECONDS);
             return Result.success("发送手机短信验证码成功");
         }
         return Result.error("发送手机短信验证码失败");
@@ -47,8 +52,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         //获取手机号和验证码
         String phone = userMap.get("phone").toString();
         String code = userMap.get("code").toString();
-        //从Session中获取验证码
+        //从Session中获取验证码,后续替换为Redis
         String sessionCode = session.getAttribute(phone).toString();
+        redisTemplate.opsForValue().set(phone,code);
+        //删除redis中的缓存验证码
+
         //验证码比对
         if (sessionCode != null && code.equals(sessionCode)) {
             //当前手机号是否注册,若未注册，则进行注册

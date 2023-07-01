@@ -31,5 +31,8 @@ spring:
         max-wait: 1ms
         max-active: 8
         max-idle: 8
+  cache:
+    redis:
+      time-to-live: 1800000 # 设置缓存有效期 30分钟
 reggie:
   uploadPath: D:\reggieImg\

@@ -95,6 +95,7 @@ public class DishController {
     }
 
     //起售停售---批量起售停售菜品
+    //后续使用缓存机制处理
     @PostMapping("/status/{status}")
     public Result<String> dishStatusByStatus(@PathVariable("status") Integer status, @RequestParam("ids") String ids) {
         List<Long> dishIds = Arrays.stream(ids.split(","))

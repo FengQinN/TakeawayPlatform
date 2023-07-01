@@ -10,6 +10,8 @@ import com.reggie.service.SetmealService;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
@@ -29,10 +31,9 @@ public class SetmealController {
     private RedisTemplate redisTemplate;
     //新增套餐
     @PostMapping
+    @CacheEvict(value = "setmealListCache" ,allEntries = true)
     public Result<String> addSetmeal(@RequestBody SetmealDto setmealDto) {
         setmealService.addSetmeal(setmealDto);
-        String key = "dish_" + setmealDto.getCategoryId() + "_1";
-        redisTemplate.delete(key);
         return Result.success("新增套餐成功");
     }
 
@@ -45,6 +46,7 @@ public class SetmealController {
 
     //逻辑删除套餐
     @DeleteMapping
+    @CacheEvict(value = "setmealListCache" ,allEntries = true)
     public Result<String> deleteSetmeal(@RequestParam("ids") String ids) {
         setmealService.deleteSetmeal(ids);
         return Result.success("删除套餐成功");
@@ -52,6 +54,7 @@ public class SetmealController {
 
     //批量起售禁售
     @PostMapping("/status/{status}")
+    @CacheEvict(value = "setmealListCache" ,allEntries = true)
     public Result<String> setmealStatusByStatus(@PathVariable("status") Integer status, @RequestParam("ids") String ids) {
         setmealService.setmealStatusByStatus(status, ids);
         return Result.success("操作成功");
@@ -68,13 +71,12 @@ public class SetmealController {
     @PutMapping
     public Result<String> editSetmeal(@RequestBody SetmealDto setmealDto) {
         setmealService.editSetmeal(setmealDto);
-        String key = "dish_" + setmealDto.getCategoryId() + "_1";
-        redisTemplate.delete(key);
         return Result.success("修改成功");
     }
 
     //获取菜品分类对应的套餐
     @GetMapping("/list")
+    @Cacheable(value = "setmealListCache",key = "#setmeal.getCategoryId() + '_' + #setmeal.getStatus() ")
     public Result<List<SetmealDto>> setmealList(Setmeal setmeal) {
         List<SetmealDto> result = setmealService.setmealList(setmeal);
         return Result.success(result);

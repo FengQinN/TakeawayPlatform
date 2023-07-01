@@ -170,11 +170,6 @@ public class SetmealServiceImpl extends ServiceImpl<SetmealMapper, Setmeal> impl
     public List<SetmealDto> setmealList(Setmeal setmeal) {
         //从redis中获取数据
         List<SetmealDto> collect =null;
-        String key = "setmeal_" + setmeal.getCategoryId() + "_" + setmeal.getStatus();
-        collect = (List<SetmealDto>) redisTemplate.opsForValue().get(key);
-        if (collect != null) {
-            return collect;
-        }
         //查询setmeal表
         LambdaQueryWrapper<Setmeal> setmealLambdaQueryWrapper = new LambdaQueryWrapper<>();
         setmealLambdaQueryWrapper.eq(setmeal.getCategoryId() != null, Setmeal::getCategoryId, setmeal.getCategoryId()).
@@ -195,7 +190,6 @@ public class SetmealServiceImpl extends ServiceImpl<SetmealMapper, Setmeal> impl
             return setmealDto;
         }).collect(Collectors.toList());
         //返回结果
-        redisTemplate.opsForValue().set(key,collect,60, TimeUnit.MINUTES);
         return collect;
     }
 }

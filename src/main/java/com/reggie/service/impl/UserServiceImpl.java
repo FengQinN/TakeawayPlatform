@@ -40,7 +40,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             //SMSUtils.sendMessage("阿里云短信测试", "SMS_154950909", phone, code);
             //保存验证码,暂时保存在Session中，后期替换为Redis
             //session.setAttribute(phone, code);
-            redisTemplate.opsForValue().set(phone,code,60l, TimeUnit.SECONDS);
+            redisTemplate.opsForValue().set(phone,code,5, TimeUnit.MINUTES);
             return Result.success("发送手机短信验证码成功");
         }
         return Result.error("发送手机短信验证码失败");
@@ -53,10 +53,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         String phone = userMap.get("phone").toString();
         String code = userMap.get("code").toString();
         //从Session中获取验证码,后续替换为Redis
-        String sessionCode = session.getAttribute(phone).toString();
-        redisTemplate.opsForValue().set(phone,code);
-        //删除redis中的缓存验证码
-
+        //String sessionCode = session.getAttribute(phone).toString();
+        String sessionCode = (String) redisTemplate.opsForValue().get(phone);
         //验证码比对
         if (sessionCode != null && code.equals(sessionCode)) {
             //当前手机号是否注册,若未注册，则进行注册
@@ -71,6 +69,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 //手机号存在，登录
                 //将用户ID存入session
                 session.setAttribute("user",queryUser.getId());
+                //删除redis中的缓存验证码
+                redisTemplate.delete(phone);
                 return Result.success(queryUser);
             }
             //注册
@@ -78,6 +78,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             user.setPhone(phone);
             this.save(user);
             return Result.success(user);
+        }
+        if (sessionCode == null){
+            return Result.error("验证码超时");
         }
         return Result.error("验证码错误");
     }

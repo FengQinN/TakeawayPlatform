@@ -15,11 +15,13 @@ import com.reggie.service.SetmealService;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
@@ -31,6 +33,8 @@ public class SetmealServiceImpl extends ServiceImpl<SetmealMapper, Setmeal> impl
     @Autowired
     private CategoryService categoryService;
 
+    @Autowired
+    private RedisTemplate redisTemplate;
     //新增套餐
     @Override
     public void addSetmeal(SetmealDto setmealDto) {
@@ -164,6 +168,13 @@ public class SetmealServiceImpl extends ServiceImpl<SetmealMapper, Setmeal> impl
     ///获取菜品分类对应的套餐
     @Override
     public List<SetmealDto> setmealList(Setmeal setmeal) {
+        //从redis中获取数据
+        List<SetmealDto> collect =null;
+        String key = "setmeal_" + setmeal.getCategoryId() + "_" + setmeal.getStatus();
+        collect = (List<SetmealDto>) redisTemplate.opsForValue().get(key);
+        if (collect != null) {
+            return collect;
+        }
         //查询setmeal表
         LambdaQueryWrapper<Setmeal> setmealLambdaQueryWrapper = new LambdaQueryWrapper<>();
         setmealLambdaQueryWrapper.eq(setmeal.getCategoryId() != null, Setmeal::getCategoryId, setmeal.getCategoryId()).
@@ -172,7 +183,7 @@ public class SetmealServiceImpl extends ServiceImpl<SetmealMapper, Setmeal> impl
         setmealLambdaQueryWrapper.orderByDesc(Setmeal::getUpdateTime);
         List<Setmeal> setmealList = this.list(setmealLambdaQueryWrapper);
         //根据setmeal_id查询setmeal_dish表
-        List<SetmealDto> collect = setmealList.stream().map((item) -> {
+        collect = setmealList.stream().map((item) -> {
             Long setmealId = item.getId();
             LambdaQueryWrapper<SetmealDish> setmealDishLambdaQueryWrapper = new LambdaQueryWrapper<>();
             setmealDishLambdaQueryWrapper.eq(SetmealDish::getSetmealId, setmealId);
@@ -184,6 +195,7 @@ public class SetmealServiceImpl extends ServiceImpl<SetmealMapper, Setmeal> impl
             return setmealDto;
         }).collect(Collectors.toList());
         //返回结果
+        redisTemplate.opsForValue().set(key,collect,60, TimeUnit.MINUTES);
         return collect;
     }
 }

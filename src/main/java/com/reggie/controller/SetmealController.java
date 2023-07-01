@@ -10,6 +10,7 @@ import com.reggie.service.SetmealService;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,10 +25,14 @@ public class SetmealController {
     @Autowired
     private SetmealService setmealService;
 
+    @Autowired
+    private RedisTemplate redisTemplate;
     //新增套餐
     @PostMapping
     public Result<String> addSetmeal(@RequestBody SetmealDto setmealDto) {
         setmealService.addSetmeal(setmealDto);
+        String key = "dish_" + setmealDto.getCategoryId() + "_1";
+        redisTemplate.delete(key);
         return Result.success("新增套餐成功");
     }
 
@@ -63,6 +68,8 @@ public class SetmealController {
     @PutMapping
     public Result<String> editSetmeal(@RequestBody SetmealDto setmealDto) {
         setmealService.editSetmeal(setmealDto);
+        String key = "dish_" + setmealDto.getCategoryId() + "_1";
+        redisTemplate.delete(key);
         return Result.success("修改成功");
     }
 

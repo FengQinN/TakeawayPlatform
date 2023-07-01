@@ -19,8 +19,17 @@ spring:
   global-config:
     db-config:
       id-type: ASSIGN_ID
+  #谨记！！！，不要写错
   redis:
-    url: 192.168.121.128
-
+    password: k2720668823
+    connect-timeout: 5000
+    port: 6379
+    host: 192.168.121.128
+    jedis:
+      pool:
+        min-idle: 0
+        max-wait: 1ms
+        max-active: 8
+        max-idle: 8
 reggie:
   uploadPath: D:\reggieImg\

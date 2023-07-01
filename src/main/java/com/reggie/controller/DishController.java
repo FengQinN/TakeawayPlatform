@@ -14,16 +14,23 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/dish")
 @Slf4j
+@Transactional
 public class DishController {
+
+    @Autowired
+    private RedisTemplate redisTemplate;
 
     @Autowired
     private DishService dishService;
@@ -106,6 +113,8 @@ public class DishController {
     @PostMapping
     public Result<String> addDish(@RequestBody DishDto dishDto) {
         dishService.addDish(dishDto);
+        String key = "dish_" + dishDto.getCategoryId() + "_1";
+        redisTemplate.delete(key);
         return Result.success("新增成功");
     }
 
@@ -120,12 +129,21 @@ public class DishController {
     @PutMapping
     public Result<String> updateDish(@RequestBody DishDto dishDto) {
         dishService.updateDishWithFlavor(dishDto);
+        String key = "dish_" + dishDto.getCategoryId() + "_1";
+        redisTemplate.delete(key);
         return Result.success("修改成功");
     }
 
     //根据ID查询菜品信息
     @GetMapping("/list")
     public Result<List<DishDto>> queryDishList(Dish dish) {
+        //首先在Redis中获取
+        List<DishDto> collect = null;
+        String key ="dish_" + dish.getCategoryId() + "_" + dish.getStatus();
+        collect = (List<DishDto>) redisTemplate.opsForValue().get(key);
+        if (collect != null){
+            return Result.success(collect);
+        }
         //构造查询条件
         LambdaQueryWrapper<Dish> queryWrapper = new LambdaQueryWrapper<>();
         //添加等值查询
@@ -136,7 +154,7 @@ public class DishController {
         queryWrapper.orderByAsc(Dish::getSort).orderByDesc(Dish::getUpdateTime);
         //查询
         List<Dish> dishList = dishService.list(queryWrapper);
-        List<DishDto> collect = dishList.stream().map((item) -> {
+        collect = dishList.stream().map((item) -> {
             //获取dishID
             Long dishId = item.getId();
             //构造查询条件
@@ -152,6 +170,7 @@ public class DishController {
             return dishDto;
         }).collect(Collectors.toList());
         //返回结果
+        redisTemplate.opsForValue().set(key,collect,60, TimeUnit.MINUTES);
         return Result.success(collect);
     }
 }

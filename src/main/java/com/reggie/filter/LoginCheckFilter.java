@@ -27,6 +27,7 @@ public class LoginCheckFilter implements Filter {
 
         //1、获取本次请求的URI
         String requestURI = request.getRequestURI();// /backend/index.html
+        log.info("拦截请求URI:{}",requestURI);
         //定义不需要处理的请求路径
         String[] urls = new String[]{
                 "/employee/login",
@@ -34,7 +35,11 @@ public class LoginCheckFilter implements Filter {
                 "/backend/**",
                 "/front/**",
                 "/user/login",
-                "/user/sendMsg"
+                "/user/sendMsg",
+                "/doc.html",
+                "/webjars/**",
+                "/swagger-resources",
+                "/v2/api-docs"
         };
 
 

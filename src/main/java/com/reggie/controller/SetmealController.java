@@ -69,6 +69,7 @@ public class SetmealController {
 
     //修改套餐数据
     @PutMapping
+    @CacheEvict(value = "queryDishList", allEntries = true)
     public Result<String> editSetmeal(@RequestBody SetmealDto setmealDto) {
         setmealService.editSetmeal(setmealDto);
         return Result.success("修改成功");

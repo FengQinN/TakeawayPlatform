@@ -62,7 +62,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             queryWrapper.eq(User::getPhone,phone);
             User queryUser = this.getOne(queryWrapper);
             if (queryUser != null){
-                if (queryUser.getStatus() == 0){
+                if (queryUser.getStatus() == 1){
                     //账号封禁
                     return Result.error("账号已封禁");
                 }

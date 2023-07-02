@@ -14,6 +14,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
@@ -81,6 +83,7 @@ public class DishController {
 
     //删除菜品
     @DeleteMapping
+    @CacheEvict(value = "queryDishList", allEntries = true)
     public Result<String> deleteDish(@RequestParam("ids") String ids) {
         List<Long> dishIds = Arrays.stream(ids.split(","))
                 .map(Long::parseLong)
@@ -95,8 +98,8 @@ public class DishController {
     }
 
     //起售停售---批量起售停售菜品
-    //后续使用缓存机制处理
     @PostMapping("/status/{status}")
+    @CacheEvict(value = "queryDishList", allEntries = true)
     public Result<String> dishStatusByStatus(@PathVariable("status") Integer status, @RequestParam("ids") String ids) {
         List<Long> dishIds = Arrays.stream(ids.split(","))
                 .map(Long::parseLong)
@@ -112,10 +115,9 @@ public class DishController {
 
     //新增菜品,设计菜品表和菜品口味表
     @PostMapping
+    @CacheEvict(value = "queryDishList", allEntries = true)
     public Result<String> addDish(@RequestBody DishDto dishDto) {
         dishService.addDish(dishDto);
-        String key = "dish_" + dishDto.getCategoryId() + "_1";
-        redisTemplate.delete(key);
         return Result.success("新增成功");
     }
 
@@ -128,6 +130,7 @@ public class DishController {
 
     //修改菜品
     @PutMapping
+    @CacheEvict(value = "queryDishList", allEntries = true)
     public Result<String> updateDish(@RequestBody DishDto dishDto) {
         dishService.updateDishWithFlavor(dishDto);
         String key = "dish_" + dishDto.getCategoryId() + "_1";
@@ -137,14 +140,10 @@ public class DishController {
 
     //根据ID查询菜品信息
     @GetMapping("/list")
+    @Cacheable(value = "queryDishList",key = "#dish.getCategoryId() + '_' + #dish.getStatus() ")
     public Result<List<DishDto>> queryDishList(Dish dish) {
         //首先在Redis中获取
         List<DishDto> collect = null;
-        String key ="dish_" + dish.getCategoryId() + "_" + dish.getStatus();
-        collect = (List<DishDto>) redisTemplate.opsForValue().get(key);
-        if (collect != null){
-            return Result.success(collect);
-        }
         //构造查询条件
         LambdaQueryWrapper<Dish> queryWrapper = new LambdaQueryWrapper<>();
         //添加等值查询
@@ -171,7 +170,6 @@ public class DishController {
             return dishDto;
         }).collect(Collectors.toList());
         //返回结果
-        redisTemplate.opsForValue().set(key,collect,60, TimeUnit.MINUTES);
         return Result.success(collect);
     }
 }
